@@ -16,6 +16,9 @@ public class ChatGPTColorFetcher : MonoBehaviour
     private Renderer ballRenderer;
 
     public GameObject moodBallPrefab;
+    private GameObject currentMoodBall;
+
+    public GameObject[] obstaclePrefabs;
 
     void Start()
     {
@@ -26,6 +29,7 @@ public class ChatGPTColorFetcher : MonoBehaviour
     void OnSendMood()
     {
         string mood = moodInput.text;
+        currentMoodBall = CreateMoodBall(); // Step 1: Create the ball first
         StartCoroutine(SendMoodToChatGPT(mood));
     }
 
@@ -77,32 +81,35 @@ public class ChatGPTColorFetcher : MonoBehaviour
         string rgbString = json.Substring(start, end - start);
         return rgbString.Trim();
     }
-    void CreateMoodBall(string rgbString, Color color)
+    GameObject CreateMoodBall()
     {
         Vector2 spawnPos = new Vector2(Random.Range(-7f, 7f), 4f); // spawn above screen
         GameObject newBall = Instantiate(moodBallPrefab, spawnPos, Quaternion.identity);
-
-        SpriteRenderer renderer = newBall.GetComponent<SpriteRenderer>();
+        SpawnRandomObstacle();
+        return newBall;
+    }
+    void ApplyColorToMoodBall(GameObject moodBall, Color color)
+    {
+        SpriteRenderer renderer = moodBall.GetComponent<SpriteRenderer>();
         if (renderer != null)
         {
             renderer.color = color;
         }
 
-        Rigidbody2D rb = newBall.GetComponent<Rigidbody2D>();
+        Rigidbody2D rb = moodBall.GetComponent<Rigidbody2D>();
         if (rb != null)
         {
             PhysicsMaterial2D bounceMat = new PhysicsMaterial2D
             {
-                bounciness = 1f, // High bounciness for chaos
-                friction = 0f    // No friction
+                bounciness = 1f,
+                friction = 0f
             };
             rb.sharedMaterial = bounceMat;
         }
 
-        Debug.Log($"Spawned new mood ball with color: {color}");
+        Debug.Log($"Applied color to mood ball: {color}");
     }
 
-    
     void ApplyColorToBall(string rgbString)
     {
         string[] parts = rgbString.Split(',');
@@ -114,7 +121,11 @@ public class ChatGPTColorFetcher : MonoBehaviour
         {
             Color newColor = new Color(r / 255f, g / 255f, b / 255f);
             ballRenderer.material.color = newColor;
-            CreateMoodBall(rgbString, newColor);
+
+            if (currentMoodBall != null)
+            {
+                ApplyColorToMoodBall(currentMoodBall, newColor);
+            }
 
             Debug.Log($"Applied RGB color: R={r}, G={g}, B={b}");
         }
@@ -122,8 +133,23 @@ public class ChatGPTColorFetcher : MonoBehaviour
         {
             Debug.Log("Failed to parse RGB values, using white.");
             ballRenderer.material.color = Color.white;
-            CreateMoodBall(rgbString, Color.white);
+
+            if (currentMoodBall != null)
+            {
+                ApplyColorToMoodBall(currentMoodBall, Color.white);
+            }
         }
+    }
+
+    void SpawnRandomObstacle()
+    {
+        if (obstaclePrefabs.Length == 0) return;
+
+        Vector2 spawnPos = new Vector2(Random.Range(-7f, 7f), Random.Range(-3f, 3f));
+        Quaternion randomRot = Quaternion.Euler(0, 0, Random.Range(0f, 360f));
+        int index = Random.Range(0, obstaclePrefabs.Length);
+
+        Instantiate(obstaclePrefabs[index], spawnPos, randomRot);
     }
 }
 
